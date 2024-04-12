@@ -24,7 +24,7 @@ namespace fs = std::filesystem;
 
 const path DFLT_DCG_PATH = "mod_options.dgc";
 const path DFLT_GZDOOM = "gzdoom";
-const path DFLT_CONFIG = DFLT_GZDOOM / "gzdoom_portable.ini";
+const path DFLT_CONFIG = "gzdoom_portable_pc.ini";
 const std::string DEFAULT_COMMAND = "-config gzdoom_portable.ini -file mods\\SIGIL_v1_21.wad mods\\SIGIL_SHREDS.wad mods\\SIGIL_II_V1_0.WAD mods\\sigil2_ost_thorr.WAD mods\\D64TEX.PK3 mods\\DoomMetalVol5.wad";
 
 struct DooM
@@ -33,11 +33,11 @@ struct DooM
 
 	path gzdoom_dir = DFLT_GZDOOM;
 
-	path iwad_dir = gzdoom_dir / "iwads";
-	path iwad = iwad_dir / "DOOM.WAD";
+	//path iwad_dir = "iwads";
+	path iwad;
 
-	path mod_dir = gzdoom_dir / "mods";
-	std::vector<path> mod_fnames;
+	path mod_dir = "mods";
+	std::vector<std::string> mod_filenames;
 
 	path config = DFLT_CONFIG;
 
@@ -50,23 +50,38 @@ public:
 	GZDML() {
 		if (fs::current_path().string() == "C:\\Projects\\Qt\\gzdml") {
 			cerr << "!changed curr path" << endl;
-			fs::current_path(path{ "C:\\Projects\\Qt\\gzdml\\x64\\Debug" });
+			fs::current_path(path{ "C:\\Projects\\Qt\\gzdml\\x64\\Release" });
 
-			bool is_first_launch = CheckIfFirstLaunch();
+			//bool is_first_launch = CheckIfFirstLaunch();
 			file_writer_.open(DFLT_DCG_PATH.string());
 
-			//for a first launch, output an example config
-			if (is_first_launch) {
 
-			}
 		}
 
-		//set labels for testing
-		launch_configs_[0].label = "DOOM";
-		launch_configs_[1].label = "DOOM II";
-		launch_configs_[2].label = "Some Awesome Mod";
-		launch_configs_[3].label = "Brutal DooM Sigil I&II";
-		launch_configs_[4].label = "Lost in Darkness";
+		//set mod configs for testing
+		launch_dgcs_[0].label = "Classic DOOM";
+
+		//"SIGIL_II_V1_0.WAD mods\\sigil2_ost_thorr.WAD mods\\D64TEX.PK3 mods\\DoomMetalVol5.wad";
+
+		launch_dgcs_[1].label = "Brutal DooM Sigil I&II";
+		launch_dgcs_[1].iwad = "DOOM.WAD";
+		launch_dgcs_[1].mod_filenames = { "brutalv22test3.pk3", "SIGIL_v1_21.wad", "SIGIL_SHREDS.wad", "SIGIL_II_V1_0.WAD", "sigil2_ost_thorr.WAD", "D64TEX.PK3", "DoomMetalVol5.wad"};
+
+		launch_dgcs_[2].label = "Brutal DooM BTSX I";
+		launch_dgcs_[2].iwad = "DOOM2.WAD";
+		launch_dgcs_[2].mod_filenames = { "btsx_e1a.wad", "btsx_e1b.wad", "brutalv22test3.pk3" };
+
+		launch_dgcs_[3].label = "Brutal DooM BTXS II";
+		launch_dgcs_[3].iwad = "DOOM2.WAD";
+		launch_dgcs_[3].mod_filenames = { "btsx_e2a.wad", "btsx_e2b.wad", "brutalv22test3.pk3" };
+
+		launch_dgcs_[4].label = "Lost in Darkness";
+		launch_dgcs_[4].iwad = "DOOM.WAD";
+		launch_dgcs_[4].mod_filenames = { "d2-in-d1-v3.pk3", "Lost_in_DarknessV2.0.23.pk3", "LiveReverb.pk3", "Rain_and_Snow.pk3", "D64TEX.PK3"};
+
+		launch_dgcs_[5].label = "Brutal Doom Lost in Darkness?";
+		launch_dgcs_[5].iwad = "DOOM.WAD";
+		launch_dgcs_[5].mod_filenames = { "d2-in-d1-v3.pk3", "Lost_in_DarknessV2.0.23.pk3", "LiveReverb.pk3", "Rain_and_Snow.pk3", "brutalv22test3.pk3", "D64TEX.PK3"};
 
 	}
 	GZDML(const path& gzdoom_dir);
@@ -90,34 +105,31 @@ public:
 	std::string_view SetPrevMod() {
 		//loop to end
 		if (selected_mod_id_ == 0) {
-			selected_mod_id_ = launch_configs_.size()-1;
+			selected_mod_id_ = launch_dgcs_.size()-1;
 		}
 		else {
 			--selected_mod_id_;
 		}
-		return launch_configs_[selected_mod_id_].label;
+		return launch_dgcs_[selected_mod_id_].label;
 	}
 	//returns the mod label
 	std::string_view SetNextMod() {
 		//loop to beginning
-		if (selected_mod_id_ >= launch_configs_.size() - 1) {
+		if (selected_mod_id_ >= launch_dgcs_.size() - 1) {
 			selected_mod_id_ = 0;
 		}
 		else {
 			++selected_mod_id_;
 		}
-		return launch_configs_[selected_mod_id_].label;
+		return launch_dgcs_[selected_mod_id_].label;
 	}
 
 
 	//There is always a default launch config present
 	void LaunchGame(size_t id = 0) {
-		//cerr << "Attempting to launch: " << gzdoomexe.string() 
-		//	 << " curr_path: " << fs::current_path()
-		//	 << endl;
-		cout << "\nLaunching Mod_ID #" << selected_mod_id_ << endl;
+
 		try {
-			PerformDefaultLaunch();
+			PerformLaunch();
 		}
 		catch (std::exception& ex) {
 			cout << "Error during launch: " << ex.what() << endl;
@@ -138,7 +150,7 @@ private:
 
 	std::ofstream file_writer_;
 
-	std::vector<DooM> launch_configs_{ 5 };
+	std::vector<DooM> launch_dgcs_{ 6 };
 
 //METHODS
 	bool CheckIfFirstLaunch() {
@@ -153,16 +165,40 @@ private:
 	}
 	//looks for the gzdoom exe and sets the path variables
 	void InitGZDoomPaths();
+
 	//creates all the neccessary directories
 	void SetupFolders(); 
-	//makes a launch command special string from a std::string or a DooM-config
-	LPCWSTR MakeLaunchCommand(const std::string& launch_command) {
-		return std::wstring(launch_command.begin(), launch_command.end()).c_str();
+
+	//makes a launch command string from a DooM-config
+	std::string MakeLaunchCommand(size_t mod_id) {
+
+		auto& dgc = launch_dgcs_[mod_id];
+
+		std::string launch_command = "-config ";
+		launch_command.append(dgc.config.string());
+
+		if (!dgc.iwad.empty()) {
+			launch_command.append(" -iwad ");
+			launch_command.append(dgc.iwad.string());
+		}
+
+		launch_command.append(" -file");
+
+		for (const auto& mod : dgc.mod_filenames) {
+			launch_command.append(" " + dgc.mod_dir.string() + "\\" + mod);
+		}
+		//cerr << "\n*** launching w/command: " << launch_command << endl;
+		return launch_command;
+	}
+
+	bool ParseDgcFile(path file) {
+		////////parse.....
 	}
 
 	//Tested - working
-	void PerformDefaultLaunch() {
-		ShellExecuteW(NULL, NULL, gzdoomexe.c_str(), MakeLaunchCommand(DEFAULT_COMMAND), gzdoompath.c_str(), SW_SHOWDEFAULT);
+	void PerformLaunch() {
+		std::string lcmd = MakeLaunchCommand(selected_mod_id_);
+		ShellExecuteW(NULL, NULL, gzdoomexe.c_str(), std::wstring(lcmd.begin(), lcmd.end()).c_str(), gzdoompath.c_str(), SW_SHOWDEFAULT);
 
 		//STARTUPINFO si;
 		//PROCESS_INFORMATION pi;
